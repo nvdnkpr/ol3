@@ -13,13 +13,10 @@ goog.require('ol.TileCoord');
  * @constructor
  * @param {!Array.<number>} resolutions Resolutions.
  * @param {ol.Extent} extent Extent.
- * @param {goog.math.Coordinate|!Array.<goog.math.Coordinate>} origin Origin.
- * @param {boolean=} opt_xEast Tile coordinates increase eastwards.
- * @param {boolean=} opt_ySouth Tile coordinates increas southwards.
  * @param {goog.math.Size=} opt_tileSize Tile size.
  */
 ol.TileGrid =
-    function(resolutions, extent, origin, opt_xEast, opt_ySouth, opt_tileSize) {
+    function(resolutions, extent, opt_tileSize) {
 
   /**
    * @private
@@ -32,48 +29,9 @@ ol.TileGrid =
 
   /**
    * @private
-   * @type {number}
-   */
-  this.numResolutions_ = this.resolutions_.length;
-
-  /**
-   * @private
    * @type {ol.Extent}
    */
   this.extent_ = extent;
-
-  /**
-   * @private
-   * @type {boolean}
-   */
-  this.xEast_ = goog.isDef(opt_xEast) ? opt_xEast : true;
-
-  /**
-   * @private
-   * @type {boolean}
-   */
-  this.ySouth_ = goog.isDef(opt_ySouth) ? opt_ySouth : true;
-
-  /**
-   * @private
-   * @type {goog.math.Coordinate}
-   */
-  this.origin_ = null;
-
-  /**
-   * @private
-   * @type {Array.<goog.math.Coordinate>}
-   */
-  this.origins_ = null;
-
-  if (origin instanceof goog.math.Coordinate) {
-    this.origin_ = origin;
-  } else if (goog.isArray(origin)) {
-    goog.asserts.assert(origin.length == this.numResolutions_);
-    this.origins_ = origin;
-  } else {
-    goog.asserts.assert(false);
-  }
 
   /**
    * @private
@@ -89,16 +47,7 @@ ol.TileGrid =
  * @param {ol.TileCoord} tileCoord Tile coordinate.
  * @param {function(number, ol.TileBounds): boolean} callback Callback.
  */
-ol.TileGrid.prototype.forEachTileCoordParent = function(tileCoord, callback) {
-  var tileCoordExtent = this.getTileCoordExtent(tileCoord);
-  var z = tileCoord.z - 1;
-  while (z >= 0) {
-    if (callback(z, this.getExtentTileBounds(z, tileCoordExtent))) {
-      return;
-    }
-    --z;
-  }
-};
+ol.TileGrid.prototype.forEachTileCoordParent = goog.abstractMethod;
 
 
 /**
@@ -135,15 +84,7 @@ ol.TileGrid.prototype.getMaxResolution = function() {
  * @param {number} z Z.
  * @return {goog.math.Coordinate} Origin.
  */
-ol.TileGrid.prototype.getOrigin = function(z) {
-  if (!goog.isNull(this.origin_)) {
-    return this.origin_;
-  } else {
-    goog.asserts.assert(!goog.isNull(this.origins_));
-    goog.asserts.assert(0 <= z && z < this.origins_.length);
-    return this.origins_[z];
-  }
-};
+ol.TileGrid.prototype.getOrigin = goog.abstractMethod;
 
 
 /**
@@ -151,7 +92,7 @@ ol.TileGrid.prototype.getOrigin = function(z) {
  * @return {number} Resolution.
  */
 ol.TileGrid.prototype.getResolution = function(z) {
-  goog.asserts.assert(0 <= z && z < this.numResolutions_);
+  goog.asserts.assert(0 <= z && z < this.resolutions_.length);
   return this.resolutions_[z];
 };
 
@@ -169,86 +110,28 @@ ol.TileGrid.prototype.getResolutions = function() {
  * @param {goog.math.Coordinate} coordinate Coordinate.
  * @return {ol.TileCoord} Tile coordinate.
  */
-ol.TileGrid.prototype.getTileCoord = function(z, coordinate) {
-  var origin = this.getOrigin(z);
-  var resolution = this.getResolution(z);
-  var tileSize = this.getTileSize();
-  var x;
-  if (this.xEast_) {
-    x = Math.floor((coordinate.x - origin.x) / (tileSize.width * resolution));
-  } else {
-    x = Math.floor((origin.x - coordinate.x) / (tileSize.width * resolution));
-  }
-  var y;
-  if (this.ySouth_) {
-    y = Math.floor((origin.y - coordinate.y) / (tileSize.height * resolution));
-  } else {
-    y = Math.floor((coordinate.y - origin.y) / (tileSize.height * resolution));
-  }
-  return new ol.TileCoord(z, x, y);
-};
+ol.TileGrid.prototype.getTileCoord = goog.abstractMethod;
 
 
 /**
  * @param {ol.TileCoord} tileCoord Tile coordinate.
  * @return {goog.math.Coordinate} Tile center.
  */
-ol.TileGrid.prototype.getTileCoordCenter = function(tileCoord) {
-  var origin = this.getOrigin(tileCoord.z);
-  var resolution = this.getResolution(tileCoord.z);
-  var tileSize = this.tileSize_;
-  var x;
-  if (this.xEast_) {
-    x = origin.x + (tileCoord.x + 0.5) * tileSize.width * resolution;
-  } else {
-    x = origin.x - (tileCoord.x + 0.5) * tileSize.width * resolution;
-  }
-  var y;
-  if (this.ySouth_) {
-    y = origin.y - (tileCoord.y + 0.5) * tileSize.height * resolution;
-  } else {
-    y = origin.y + (tileCoord.y + 0.5) * tileSize.height * resolution;
-  }
-  return new goog.math.Coordinate(x, y);
-};
+ol.TileGrid.prototype.getTileCoordCenter = goog.abstractMethod;
 
 
 /**
  * @param {ol.TileCoord} tileCoord Tile coordinate.
  * @return {ol.Extent} Extent.
  */
-ol.TileGrid.prototype.getTileCoordExtent = function(tileCoord) {
-  var origin = this.getOrigin(tileCoord.z);
-  var resolution = this.getResolution(tileCoord.z);
-  var tileSize = this.tileSize_;
-  var left, right;
-  if (this.xEast_) {
-    left = origin.x + tileCoord.x * tileSize.width * resolution;
-    right = left + tileSize.width * resolution;
-  } else {
-    right = origin.x - tileCoord.x * tileSize.width * resolution;
-    left = right - tileSize.height * resolution;
-  }
-  var top, bottom;
-  if (this.ySouth_) {
-    top = origin.y - tileCoord.y * tileSize.height * resolution;
-    bottom = top - tileSize.height * resolution;
-  } else {
-    bottom = origin.y + tileCoord.y * tileSize.height * resolution;
-    top = bottom + tileSize.height * resolution;
-  }
-  return new ol.Extent(top, right, bottom, left);
-};
+ol.TileGrid.prototype.getTileCoordExtent = goog.abstractMethod;
 
 
 /**
  * @param {ol.TileCoord} tileCoord Tile coordinate.
  * @return {number} Tile resolution.
  */
-ol.TileGrid.prototype.getTileCoordResolution = function(tileCoord) {
-  goog.asserts.assert(0 <= tileCoord.z && tileCoord.z < this.numResolutions_);
-  return this.resolutions_[tileCoord.z];
-};
+ol.TileGrid.prototype.getTileCoordResolution = goog.abstractMethod;
 
 
 /**
@@ -260,40 +143,7 @@ ol.TileGrid.prototype.getTileSize = function() {
 
 
 /**
- * @return {boolean} X East.
- */
-ol.TileGrid.prototype.getXEast = function() {
-  return this.xEast_;
-};
-
-
-/**
- * @return {boolean} Y South.
- */
-ol.TileGrid.prototype.getYSouth = function() {
-  return this.ySouth_;
-};
-
-
-/**
  * @param {number} resolution Resolution.
  * @return {number} Z.
  */
-ol.TileGrid.prototype.getZForResolution = function(resolution) {
-  var z;
-  for (z = 0; z < this.numResolutions_; ++z) {
-    if (this.resolutions_[z] == resolution) {
-      return z;
-    } else if (this.resolutions_[z] < resolution) {
-      if (z === 0) {
-        return z;
-      } else if (resolution - this.resolutions_[z] <=
-          this.resolutions_[z - 1] - resolution) {
-        return z;
-      } else {
-        return z - 1;
-      }
-    }
-  }
-  return this.numResolutions_ - 1;
-};
+ol.TileGrid.prototype.getZForResolution = goog.abstractMethod;

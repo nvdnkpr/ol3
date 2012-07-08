@@ -4,6 +4,7 @@ goog.require('ol.Array');
 goog.require('ol.Bounds');
 goog.require('ol.Camera');
 goog.require('ol.Extent');
+goog.require('ol.FreeTileGrid');
 goog.require('ol.Layer');
 goog.require('ol.LayerView');
 goog.require('ol.Object');

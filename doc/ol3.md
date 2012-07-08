@@ -13,6 +13,13 @@ goog.math.Box
 +- TileBounds  // A range of tiles in two dimensions, integer coordinates, z not stored
 
 
+TileGrid
+|
++- FreeTileGrid
+|
++- OSMTileGrid
+
+
 Projection
 
 
